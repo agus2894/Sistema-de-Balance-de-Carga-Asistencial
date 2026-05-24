@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Balance de Carga Asistencial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        /* Mejoras para touch en móviles */
+        input[type="number"] {
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Mejor área de toque en móviles */
+        @media (max-width: 640px) {
+            button, input {
+                min-height: 44px; /* Tamaño mínimo recomendado para táctil */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-700 via-slate-600 to-slate-700 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div class="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Sistema de Balance de Carga Asistencial</h1>
+                    <p class="mt-1 text-xs sm:text-sm text-gray-500">Gestión y distribución de recursos hospitalarios</p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <!-- Selector de Turno -->
+                    <div class="flex items-center space-x-2 bg-gradient-to-r from-purple-50 to-indigo-50 px-3 py-2 rounded-lg border border-purple-200">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <select id="selector-turno" onchange="cambiarTurno()" class="text-xs sm:text-sm font-semibold text-purple-900 bg-transparent border-none focus:outline-none cursor-pointer">
+                            <option value="mañana">🌅 Mañana</option>
+                            <option value="tarde">☀️ Tarde</option>
+                            <option value="noche">🌙 Noche</option>
+                        </select>
+                    </div>
+                    <!-- Reloj -->
+                    <div class="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-lg">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-xs sm:text-sm font-medium text-blue-900" id="fecha-hora"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Recursos Totales -->
+        <div id="total-recursos"></div>
+        
+        <!-- Panel de Información de Auto-guardado -->
+        <div class="bg-gradient-to-r from-cyan-50 to-sky-50 border-l-4 border-cyan-500 rounded-xl p-4 mb-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-start space-x-3">
+                    <svg class="w-5 h-5 text-cyan-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-cyan-900"> Auto-guardado Activo</p>
+                        <p class="text-xs text-cyan-600 mt-1.5"><strong> Tip:</strong> Al modificar el número de enfermeros directamente, solo afecta ese sector. Use los botones de transferencia para mover personal entre áreas.</p>
+                    </div>
+                </div>
+                <button onclick="limpiarDatosGuardados()" class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 whitespace-nowrap touch-manipulation shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    <span>Limpiar Datos</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Botón de Configuración Global -->
+        <div class="mb-6">
+            <button onclick="mostrarModalConfiguracionGlobal()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 sm:space-x-3 group">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <div class="text-left">
+                    <div class="font-bold text-base sm:text-lg">Configurar Personal Inicial</div>
+                    <div class="text-xs text-emerald-100 hidden sm:block">Establece el plantel base y personal actual de todos los sectores</div>
+                </div>
+            </button>
+        </div>
+        
+        <!-- Estado General -->
+        <div id="estado-general"></div>
+        
+        <!-- Grilla de Áreas -->
+        <div id="grilla" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"></div>
+        
+        <!-- Leyenda -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Niveles de Saturación
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center space-x-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div class="w-4 h-4 bg-green-500 rounded-full"></div>
+                    <div>
+                        <span class="text-sm font-semibold text-green-900">Normal</span>
+                        <p class="text-xs text-green-700">≤ 80% del máximo</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div class="w-4 h-4 bg-yellow-500 rounded-full"></div>
+                    <div>
+                        <span class="text-sm font-semibold text-yellow-900">Alerta</span>
+                        <p class="text-xs text-yellow-700">80% - 100%</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div class="w-4 h-4 bg-red-500 rounded-full"></div>
+                    <div>
+                        <span class="text-sm font-semibold text-red-900">Crítico</span>
+                        <p class="text-xs text-red-700">> 100%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all fade-in my-8">
+            <div class="p-4 sm:p-6 border-b border-gray-200">
+                <h3 id="modal-titulo" class="text-lg sm:text-xl font-bold text-gray-900"></h3>
+            </div>
+            <div class="p-4 sm:p-6 max-h-[60vh] overflow-y-auto">
+                <div id="modal-opciones" class="space-y-3"></div>
+            </div>
+            <div class="p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <button onclick="cerrarModal()" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Turno actual
+        let turnoActual = 'mañana';
+        
+        // Configuración por defecto de áreas (se usará como plantilla)
+        const configuracionDefault = [
+            { nombre: 'UTI', pacientes: 8, enfermeros: 3, plantelBase: 12, ratioMaximo: 3, transferencias: [] },
+            { nombre: 'Intermedia', pacientes: 14, enfermeros: 4, plantelBase: 10, ratioMaximo: 4, transferencias: [] },
+            { nombre: 'Cuidados Generales', pacientes: 18, enfermeros: 5, plantelBase: 15, ratioMaximo: 5, transferencias: [] },
+            { nombre: 'Guardia', pacientes: 18, enfermeros: 5, plantelBase: 8, ratioMaximo: 4, transferencias: [] }
+        ];
+        
+        // Datos de las áreas (se cargarán desde localStorage si existe)
+        let areas = JSON.parse(JSON.stringify(configuracionDefault));
+        
+        // Total de enfermeros disponibles en el sistema
+        let totalEnfermerosDisponibles = areas.reduce((sum, area) => sum + area.enfermeros, 0);
+
+        // ========== SISTEMA DE LOCALSTORAGE ==========
+        
+        function guardarEstado() {
+            const estado = {
+                turno: turnoActual,
+                areas: areas,
+                totalEnfermeros: totalEnfermerosDisponibles,
+                ultimaActualizacion: new Date().toISOString()
+            };
+            
+            // Guardar estado actual del turno
+            localStorage.setItem(`carga_asistencial_${turnoActual}`, JSON.stringify(estado));
+            
+            // Guardar turno activo
+            localStorage.setItem('carga_asistencial_turno_activo', turnoActual);
+            
+            console.log(`✅ Estado guardado para turno: ${turnoActual}`);
+        }
+        
+        function cargarEstado() {
+            try {
+                // Cargar turno activo
+                const turnoGuardado = localStorage.getItem('carga_asistencial_turno_activo');
+                if (turnoGuardado) {
+                    turnoActual = turnoGuardado;
+                    document.getElementById('selector-turno').value = turnoActual;
+                }
+                
+                // Cargar datos del turno actual
+                const estadoGuardado = localStorage.getItem(`carga_asistencial_${turnoActual}`);
+                if (estadoGuardado) {
+                    const estado = JSON.parse(estadoGuardado);
+                    areas = estado.areas;
+                    totalEnfermerosDisponibles = estado.totalEnfermeros;
+                    
+                    console.log(`✅ Estado cargado para turno: ${turnoActual}`);
+                    console.log(`📅 Última actualización: ${new Date(estado.ultimaActualizacion).toLocaleString('es-ES')}`);
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ Error al cargar estado:', error);
+            }
+            return false;
+        }
+        
+        function cambiarTurno() {
+            const nuevoTurno = document.getElementById('selector-turno').value;
+            
+            if (nuevoTurno === turnoActual) return;
+            
+            // Preguntar si desea guardar el turno actual
+            if (confirm(`¿Deseas guardar los cambios del turno ${turnoActual.toUpperCase()} antes de cambiar al turno ${nuevoTurno.toUpperCase()}?`)) {
+                guardarEstado();
+            }
+            
+            // Cambiar al nuevo turno
+            turnoActual = nuevoTurno;
+            localStorage.setItem('carga_asistencial_turno_activo', turnoActual);
+            
+            // Cargar datos del nuevo turno (o usar configuración por defecto)
+            const estadoCargado = cargarEstado();
+            
+            if (!estadoCargado) {
+                // Si no hay datos guardados para este turno, usar configuración por defecto
+                areas = JSON.parse(JSON.stringify(configuracionDefault));
+                totalEnfermerosDisponibles = areas.reduce((sum, area) => sum + area.enfermeros, 0);
+                alert(`📋 Turno ${nuevoTurno.toUpperCase()}: Configuración inicial cargada`);
+            }
+            
+            renderizar();
+        }
+        
+        function limpiarDatosGuardados() {
+            if (confirm('⚠️ ¿Estás seguro de que deseas eliminar TODOS los datos guardados de TODOS los turnos? Esta acción no se puede deshacer.')) {
+                localStorage.removeItem('carga_asistencial_mañana');
+                localStorage.removeItem('carga_asistencial_tarde');
+                localStorage.removeItem('carga_asistencial_noche');
+                localStorage.removeItem('carga_asistencial_turno_activo');
+                
+                // Resetear a configuración por defecto
+                areas = JSON.parse(JSON.stringify(configuracionDefault));
+                totalEnfermerosDisponibles = areas.reduce((sum, area) => sum + area.enfermeros, 0);
+                turnoActual = 'mañana';
+                document.getElementById('selector-turno').value = 'mañana';
+                
+                renderizar();
+                alert('✅ Todos los datos han sido eliminados. Sistema reseteado a configuración inicial.');
+            }
+        }
+        
+        // Auto-guardar cada 30 segundos
+        setInterval(guardarEstado, 30000);
+        
+        // Guardar antes de cerrar la página
+        window.addEventListener('beforeunload', function(e) {
+            guardarEstado();
+        });
+
+        function calcularRatio(pacientes, enfermeros) {
+            return enfermeros === 0 ? 0 : (pacientes / enfermeros).toFixed(1);
+        }
+
+        function obtenerNivel(ratio, ratioMaximo) {
+            const umbral = ratioMaximo * 0.8;
+            if (ratio <= umbral) {
+                return { 
+                    clase: 'verde',
+                    bgClass: 'bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100',
+                    borderClass: 'border-green-500',
+                    textClass: 'text-green-900',
+                    badgeClass: 'bg-green-500',
+                    texto: '✓ Nivel Normal',
+                    estado: 'Normal',
+                    icono: '✓'
+                };
+            } else if (ratio <= ratioMaximo) {
+                return { 
+                    clase: 'amarillo',
+                    bgClass: 'bg-gradient-to-br from-yellow-100 via-amber-100 to-orange-100',
+                    borderClass: 'border-yellow-500',
+                    textClass: 'text-yellow-900',
+                    badgeClass: 'bg-yellow-500',
+                    texto: '⚠️ Nivel de Alerta',
+                    estado: 'Alerta',
+                    icono: '⚠️'
+                };
+            } else {
+                return { 
+                    clase: 'rojo',
+                    bgClass: 'bg-gradient-to-br from-red-100 via-rose-100 to-pink-100',
+                    borderClass: 'border-red-500',
+                    textClass: 'text-red-900',
+                    badgeClass: 'bg-red-500',
+                    texto: '🚨 Nivel Crítico',
+                    estado: 'Crítico',
+                    icono: '🚨'
+                };
+            }
+        }
+
+        function calcularTotales() {
+            const totalPacientes = areas.reduce((sum, area) => sum + area.pacientes, 0);
+            const totalEnfermeros = areas.reduce((sum, area) => sum + area.enfermeros, 0);
+            return { totalPacientes, totalEnfermeros };
+        }
+
+        function actualizarFechaHora() {
+            const ahora = new Date();
+            const esMovil = window.innerWidth < 640;
+            
+            if (esMovil) {
+                // Formato compacto para móviles
+                const opciones = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+                document.getElementById('fecha-hora').textContent = ahora.toLocaleDateString('es-ES', opciones);
+            } else {
+                // Formato completo para desktop
+                const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                document.getElementById('fecha-hora').textContent = ahora.toLocaleDateString('es-ES', opciones);
+            }
+        }
+
+        function renderizarTotales() {
+            const { totalPacientes, totalEnfermeros } = calcularTotales();
+            const ratioGeneral = (totalPacientes / totalEnfermeros).toFixed(2);
+            
+            document.getElementById('total-recursos').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs sm:text-sm font-medium text-gray-600 uppercase tracking-wide">Total Pacientes</p>
+                                <p class="text-2xl sm:text-3xl font-bold text-blue-600 mt-2">${totalPacientes}</p>
+                            </div>
+                            <div class="bg-blue-100 rounded-full p-2 sm:p-3">
+                                <svg class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs sm:text-sm font-medium text-gray-600 uppercase tracking-wide">Total Enfermeros</p>
+                                <p class="text-2xl sm:text-3xl font-bold text-emerald-600 mt-2">${totalEnfermeros}</p>
+                            </div>
+                            <div class="bg-emerald-100 rounded-full p-2 sm:p-3">
+                                <svg class="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200 hover:shadow-lg transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs sm:text-sm font-medium text-gray-600 uppercase tracking-wide">Ratio General</p>
+                                <p class="text-2xl sm:text-3xl font-bold text-purple-600 mt-2">${ratioGeneral}</p>
+                            </div>
+                            <div class="bg-purple-100 rounded-full p-2 sm:p-3">
+                                <svg class="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function crearTarjeta(area, index) {
+            const ratio = parseFloat(calcularRatio(area.pacientes, area.enfermeros));
+            const nivel = obtenerNivel(ratio, area.ratioMaximo);
+            const ratioExacto = (area.pacientes / area.enfermeros).toFixed(2);
+
+            // Calcular enfermeros propios vs prestados
+            const enfermerosRecibidos = area.transferencias.filter(t => t.tipo === 'recibido');
+            const enfermerosPrestados = area.transferencias.filter(t => t.tipo === 'prestado');
+            const totalRecibidos = enfermerosRecibidos.reduce((sum, t) => sum + t.cantidad, 0);
+            const totalPrestados = enfermerosPrestados.reduce((sum, t) => sum + t.cantidad, 0);
+            const enfermerosBase = area.enfermeros - totalRecibidos + totalPrestados;
+
+            // Crear sección de transferencias
+            let transferenciasHTML = '';
+            if (enfermerosRecibidos.length > 0 || enfermerosPrestados.length > 0) {
+                transferenciasHTML = '<div class="mt-3 pt-3 border-t border-gray-200">';
+                
+                if (enfermerosRecibidos.length > 0) {
+                    transferenciasHTML += '<div class="mb-2"><p class="text-xs font-semibold text-emerald-700 mb-1">👥 Recibidos:</p>';
+                    enfermerosRecibidos.forEach(t => {
+                        transferenciasHTML += `
+                            <div class="flex items-center justify-between bg-emerald-50 px-2 py-1 rounded text-xs mb-1">
+                                <span class="text-emerald-900">← ${t.cantidad} de <strong>${t.sector}</strong></span>
+                                <button onclick="devolverEnfermero(${index}, '${t.sector}')" class="text-emerald-700 hover:text-emerald-900 font-bold" title="Devolver">✕</button>
+                            </div>
+                        `;
+                    });
+                    transferenciasHTML += '</div>';
+                }
+                
+                if (enfermerosPrestados.length > 0) {
+                    transferenciasHTML += '<div><p class="text-xs font-semibold text-orange-700 mb-1">📤 Prestados:</p>';
+                    enfermerosPrestados.forEach(t => {
+                        transferenciasHTML += `
+                            <div class="flex items-center justify-between bg-orange-50 px-2 py-1 rounded text-xs mb-1">
+                                <span class="text-orange-900">→ ${t.cantidad} a <strong>${t.sector}</strong></span>
+                            </div>
+                        `;
+                    });
+                    transferenciasHTML += '</div>';
+                }
+                
+                transferenciasHTML += '</div>';
+            }
+
+            return `
+                <div class="group relative ${nivel.bgClass} rounded-xl shadow-md border-l-4 ${nivel.borderClass} p-4 sm:p-6 hover:shadow-xl transition-all duration-300 fade-in">
+                    <!-- Tooltip -->
+                    <div class="absolute top-3 right-3 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 min-w-[200px] hidden sm:block">
+                        <div class="flex justify-between mb-1">
+                            <span class="font-semibold">Ratio Exacto:</span>
+                            <span>${ratioExacto}</span>
+                        </div>
+                        <div class="flex justify-between mb-1">
+                            <span class="font-semibold">Ratio Máximo:</span>
+                            <span>${area.ratioMaximo.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-700">
+                            <span class="font-semibold">Estado:</span>
+                            <span class="px-2 py-0.5 ${nivel.badgeClass} text-white rounded text-xs font-bold">${nivel.estado}</span>
+                        </div>
+                    </div>
+
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-900">${area.nombre}</h2>
+                        <div class="flex items-center space-x-1 sm:space-x-2">
+                            ${totalRecibidos > 0 ? `<span class="bg-emerald-500 text-white text-xs font-bold px-1.5 sm:px-2 py-1 rounded-full">+${totalRecibidos}</span>` : ''}
+                            ${totalPrestados > 0 ? `<span class="bg-orange-500 text-white text-xs font-bold px-1.5 sm:px-2 py-1 rounded-full">-${totalPrestados}</span>` : ''}
+                            <span class="text-2xl sm:text-3xl">${nivel.icono}</span>
+                        </div>
+                    </div>
+
+                    <!-- Pacientes -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-600">Pacientes</span>
+                            <input 
+                                type="number" 
+                                value="${area.pacientes}" 
+                                min="0" 
+                                max="999"
+                                onchange="establecerPacientes(${index}, this.value)"
+                                class="w-16 sm:w-20 text-center text-lg sm:text-xl font-bold text-gray-900 border-2 border-gray-300 rounded-lg py-1 focus:border-purple-500 focus:outline-none touch-manipulation"
+                            />
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="modificarPacientes(${index}, 1)" class="bg-purple-500 hover:bg-purple-600 active:bg-purple-700 text-white text-xs sm:text-sm font-semibold py-2 px-2 sm:px-3 rounded-lg transition-colors flex items-center justify-center space-x-1 touch-manipulation">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Paciente</span>
+                                <span class="sm:hidden">Pac.</span>
+                            </button>
+                            <button onclick="modificarPacientes(${index}, -1)" ${area.pacientes <= 0 ? 'disabled' : ''} class="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white text-xs sm:text-sm font-semibold py-2 px-2 sm:px-3 rounded-lg transition-colors flex items-center justify-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Paciente</span>
+                                <span class="sm:hidden">Pac.</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Enfermeros -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                                <span class="text-sm font-medium text-gray-600">Enfermeros</span>
+                                <span class="text-xs text-gray-400">(Base: ${area.plantelBase})</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input 
+                                    type="number" 
+                                    value="${area.enfermeros}" 
+                                    min="1" 
+                                    max="99"
+                                    onchange="establecerEnfermeros(${index}, this.value)"
+                                    class="w-14 sm:w-16 text-center text-lg sm:text-xl font-bold text-gray-900 border-2 border-gray-300 rounded-lg py-1 focus:border-blue-500 focus:outline-none touch-manipulation"
+                                />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
+                            <button onclick="restablecerPlantelBase(${index})" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-semibold py-2 px-1 sm:px-2 rounded-lg transition-colors flex items-center justify-center touch-manipulation" title="Restablecer al plantel base">
+                                <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </button>
+                            <button onclick="solicitarAgregarEnfermero(${index})" class="bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-xs font-semibold py-2 px-1 sm:px-2 rounded-lg transition-colors flex items-center justify-center touch-manipulation">
+                                <span>+ Trans</span>
+                            </button>
+                            <button onclick="solicitarQuitarEnfermero(${index})" ${area.enfermeros <= 1 ? 'disabled' : ''} class="bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white text-xs font-semibold py-2 px-1 sm:px-2 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation">
+                                <span>- Trans</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    ${transferenciasHTML}
+
+                    <!-- Ratio Info -->
+                    <div class="border-t-2 ${nivel.borderClass} pt-4 mt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <span class="text-xs text-gray-500 uppercase tracking-wide">Ratio Actual</span>
+                                <p class="text-xs text-gray-600 mt-0.5">Máximo: ${area.ratioMaximo}</p>
+                            </div>
+                            <span class="text-3xl sm:text-4xl font-bold ${nivel.textClass}">${ratio.toFixed(1)}</span>
+                        </div>
+                        <p class="text-xs sm:text-sm ${nivel.textClass} font-medium">${nivel.texto}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calcularEstadoGeneral() {
+            let tieneCritico = false;
+            let tieneAlerta = false;
+
+            areas.forEach(area => {
+                const ratio = parseFloat(calcularRatio(area.pacientes, area.enfermeros));
+                const nivel = obtenerNivel(ratio, area.ratioMaximo);
+                if (nivel.clase === 'rojo') tieneCritico = true;
+                else if (nivel.clase === 'amarillo') tieneAlerta = true;
+            });
+
+            if (tieneCritico) {
+                return { 
+                    bgClass: 'bg-red-50',
+                    borderClass: 'border-red-500',
+                    textClass: 'text-red-900',
+                    iconClass: 'text-red-600',
+                    texto: '🚨 Servicio Saturado',
+                    desc: 'Una o más áreas en nivel crítico. Se requiere acción inmediata.'
+                };
+            } else if (tieneAlerta) {
+                return { 
+                    bgClass: 'bg-yellow-50',
+                    borderClass: 'border-yellow-500',
+                    textClass: 'text-yellow-900',
+                    iconClass: 'text-yellow-600',
+                    texto: '⚠️ Servicio en Tensión',
+                    desc: 'Una o más áreas en alerta. Monitoreo recomendado.'
+                };
+            } else {
+                return { 
+                    bgClass: 'bg-green-50',
+                    borderClass: 'border-green-500',
+                    textClass: 'text-green-900',
+                    iconClass: 'text-green-600',
+                    texto: '✓ Servicio Estable',
+                    desc: 'Todas las áreas operando en nivel normal.'
+                };
+            }
+        }
+
+        function renderizar() {
+            renderizarTotales();
+            const estado = calcularEstadoGeneral();
+            document.getElementById('estado-general').innerHTML = `
+                <div class="${estado.bgClass} border-l-4 ${estado.borderClass} rounded-xl shadow-md p-6 mb-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="w-8 h-8 ${estado.iconClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <h2 class="text-xl font-bold ${estado.textClass}">${estado.texto}</h2>
+                            <p class="text-sm ${estado.textClass} opacity-80 mt-1">${estado.desc}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('grilla').innerHTML = areas.map((area, i) => crearTarjeta(area, i)).join('');
+        }
+
+        function modificarPacientes(index, cambio) {
+            if (areas[index].pacientes + cambio < 0) return;
+            areas[index].pacientes += cambio;
+            guardarEstado();
+            renderizar();
+        }
+
+        function establecerPacientes(index, valor) {
+            const nuevoValor = parseInt(valor);
+            if (isNaN(nuevoValor) || nuevoValor < 0) {
+                alert('El valor debe ser un número mayor o igual a 0');
+                renderizar();
+                return;
+            }
+            areas[index].pacientes = nuevoValor;
+            guardarEstado();
+            renderizar();
+        }
+
+        function restablecerPlantelBase(index) {
+            if (areas[index].enfermeros === areas[index].plantelBase) {
+                alert('Ya estás en el plantel base');
+                return;
+            }
+            
+            // Establecer el plantel base directamente
+            establecerEnfermeros(index, areas[index].plantelBase);
+        }
+
+        function establecerEnfermeros(index, valor) {
+            const nuevoValor = parseInt(valor);
+            if (isNaN(nuevoValor) || nuevoValor < 1) {
+                alert('El valor debe ser un número mayor a 0');
+                renderizar();
+                return;
+            }
+            
+            const diferencia = nuevoValor - areas[index].enfermeros;
+            
+            if (diferencia === 0) return;
+            
+            // Limpiar transferencias del sector al cambiar manualmente el número
+            areas[index].transferencias = [];
+            
+            // Limpiar transferencias relacionadas en otras áreas
+            areas.forEach((area, i) => {
+                if (i !== index) {
+                    area.transferencias = area.transferencias.filter(t => t.sector !== areas[index].nombre);
+                }
+            });
+            
+            // Establecer el nuevo valor directamente (sin redistribuir)
+            areas[index].enfermeros = nuevoValor;
+            
+            // Actualizar el total de enfermeros disponibles en el sistema
+            totalEnfermerosDisponibles = areas.reduce((sum, area) => sum + area.enfermeros, 0);
+            
+            guardarEstado();
+            renderizar();
+        }
+
+        function mostrarModalConfiguracionGlobal() {
+            const modal = document.getElementById('modal');
+            const titulo = document.getElementById('modal-titulo');
+            const opciones = document.getElementById('modal-opciones');
+
+            titulo.textContent = 'Configuración Inicial de Personal por Sector';
+            
+            let html = `
+                <div class="space-y-4">
+                    <div class="bg-gradient-to-r from-blue-50 to-emerald-50 border-l-4 border-blue-500 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-gray-900 font-semibold mb-1">📋 Configura el personal de cada sector</p>
+                        <p class="text-xs text-gray-700">
+                            <strong>Plantel Base:</strong> Número ideal/estándar de enfermeros<br>
+                            <strong>Personal Actual:</strong> Enfermeros disponibles ahora mismo
+                        </p>
+                    </div>
+            `;
+            
+            areas.forEach((area, index) => {
+                const ratio = parseFloat(calcularRatio(area.pacientes, area.enfermeros));
+                const nivel = obtenerNivel(ratio, area.ratioMaximo);
+                
+                html += `
+                    <div class="bg-white border-2 border-gray-200 hover:border-gray-300 p-4 rounded-lg transition-colors">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="font-bold text-lg text-gray-900">${area.nombre}</h4>
+                            <span class="px-2 py-1 ${nivel.badgeClass} text-white rounded text-xs font-bold">
+                                Ratio: ${ratio}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs text-gray-600 font-semibold block mb-1">
+                                    <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full mr-1"></span>
+                                    Plantel Base
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="global-plantel-${index}"
+                                    value="${area.plantelBase}" 
+                                    min="1"
+                                    class="w-full px-3 py-2 border-2 border-emerald-300 rounded-lg focus:border-emerald-500 focus:outline-none font-bold text-emerald-700 text-center text-lg"
+                                    placeholder="Base"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-600 font-semibold block mb-1">
+                                    <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-1"></span>
+                                    Personal Actual
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="global-enfermeros-${index}"
+                                    value="${area.enfermeros}" 
+                                    min="1"
+                                    oninput="actualizarTotalConfig()"
+                                    class="w-full px-3 py-2 border-2 border-blue-300 rounded-lg focus:border-blue-500 focus:outline-none font-bold text-blue-700 text-center text-lg"
+                                    placeholder="Actual"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div class="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mt-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-purple-700 font-medium mb-1">Total Personal Actual</p>
+                            <p class="text-xs text-purple-600">Este será el total disponible en el sistema</p>
+                        </div>
+                        <span id="total-enfermeros-config" class="text-3xl font-bold text-purple-700">${totalEnfermerosDisponibles}</span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 mt-6">
+                    <button 
+                        onclick="aplicarConfiguracionCompleta()"
+                        class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Aplicar Todo</span>
+                    </button>
+                    <button 
+                        onclick="restablecerTodosAPlantelBase()"
+                        class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg flex items-center justify-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>Restablecer al Base</span>
+                    </button>
+                </div>
+            </div>`;
+            
+            opciones.innerHTML = html;
+            modal.classList.remove('hidden');
+        }
+
+        function actualizarTotalConfig() {
+            let total = 0;
+            areas.forEach((area, index) => {
+                const valor = parseInt(document.getElementById(`global-enfermeros-${index}`).value) || 0;
+                total += valor;
+            });
+            const elemento = document.getElementById('total-enfermeros-config');
+            if (elemento) {
+                elemento.textContent = total;
+            }
+        }
+
+        function aplicarConfiguracionCompleta() {
+            let nuevosValores = [];
+            let total = 0;
+            
+            for (let i = 0; i < areas.length; i++) {
+                const plantelBase = parseInt(document.getElementById(`global-plantel-${i}`).value);
+                const enfermeros = parseInt(document.getElementById(`global-enfermeros-${i}`).value);
+                
+                if (isNaN(plantelBase) || plantelBase < 1) {
+                    alert(`El plantel base de ${areas[i].nombre} debe ser un número mayor a 0`);
+                    return;
+                }
+                
+                if (isNaN(enfermeros) || enfermeros < 1) {
+                    alert(`El personal actual de ${areas[i].nombre} debe ser un número mayor a 0`);
+                    return;
+                }
+                
+                nuevosValores.push({ plantelBase, enfermeros });
+                total += enfermeros;
+            }
+            
+            // Aplicar los cambios y limpiar transferencias
+            for (let i = 0; i < areas.length; i++) {
+                areas[i].plantelBase = nuevosValores[i].plantelBase;
+                areas[i].enfermeros = nuevosValores[i].enfermeros;
+                areas[i].transferencias = []; // Limpiar transferencias al aplicar configuración global
+            }
+            
+            totalEnfermerosDisponibles = total;
+            
+            cerrarModal();
+            guardarEstado();
+            renderizar();
+            
+            // Mostrar confirmación
+            alert(`✅ Configuración aplicada correctamente\n\nTotal de enfermeros en el sistema: ${total}`);
+        }
+
+        function aplicarPlantelBase() {
+            for (let i = 0; i < areas.length; i++) {
+                const plantelBase = parseInt(document.getElementById(`global-plantel-${i}`).value);
+                
+                if (isNaN(plantelBase) || plantelBase < 1) {
+                    alert('Todos los valores deben ser números mayores a 0');
+                    return;
+                }
+                
+                areas[i].plantelBase = plantelBase;
+            }
+            
+            cerrarModal();
+            renderizar();
+            alert('Plantel base actualizado correctamente');
+        }
+
+        function restablecerTodosAPlantelBase() {
+            const totalBase = areas.reduce((sum, area) => sum + area.plantelBase, 0);
+            const totalActual = areas.reduce((sum, area) => sum + area.enfermeros, 0);
+            
+            let mensaje = `¿Deseas restablecer todos los sectores a su plantel base?\n\n`;
+            mensaje += `Total actual: ${totalActual} enfermeros\n`;
+            mensaje += `Total plantel base: ${totalBase} enfermeros\n\n`;
+            
+            if (totalBase > totalActual) {
+                mensaje += `⚠️ Advertencia: El plantel base requiere ${totalBase - totalActual} enfermeros más de los que hay actualmente disponibles.\n`;
+                mensaje += `Se establecerán los valores pero puede que necesites ajustar.`;
+            } else if (totalBase < totalActual) {
+                mensaje += `ℹ️ Nota: Sobrará${totalActual - totalBase === 1 ? '' : 'n'} ${totalActual - totalBase} enfermero${totalActual - totalBase === 1 ? '' : 's'} que ${totalActual - totalBase === 1 ? 'será distribuido' : 'serán distribuidos'} proporcionalmente.`;
+            }
+            
+            if (!confirm(mensaje)) {
+                return;
+            }
+            
+            // Aplicar plantel base a todos y limpiar transferencias
+            areas.forEach((area, index) => {
+                areas[index].enfermeros = area.plantelBase;
+                areas[index].transferencias = []; // Limpiar transferencias al restablecer
+            });
+            
+            totalEnfermerosDisponibles = totalBase;
+            
+            cerrarModal();
+            guardarEstado();
+            renderizar();
+            alert(`✅ Todos los sectores han sido restablecidos a su plantel base\n\nTotal: ${totalBase} enfermeros`);
+        }
+
+        function solicitarAgregarEnfermero(indexDestino) {
+            const modal = document.getElementById('modal');
+            const titulo = document.getElementById('modal-titulo');
+            const opciones = document.getElementById('modal-opciones');
+
+            titulo.textContent = `Agregar enfermero a ${areas[indexDestino].nombre}`;
+            
+            let html = '<p class="text-sm text-gray-600 mb-4">Selecciona de qué área transferir un enfermero:</p>';
+            
+            areas.forEach((area, index) => {
+                if (index !== indexDestino && area.enfermeros > 1) {
+                    const ratio = parseFloat(calcularRatio(area.pacientes, area.enfermeros));
+                    const nivel = obtenerNivel(ratio, area.ratioMaximo);
+                    html += `
+                        <div onclick="transferirEnfermero(${index}, ${indexDestino})" class="cursor-pointer p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all">
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <p class="font-semibold text-gray-900">${area.nombre}</p>
+                                    <p class="text-xs text-gray-500 mt-1">Enfermeros: ${area.enfermeros} → ${area.enfermeros - 1}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${nivel.badgeClass} text-white">
+                                        Ratio: ${ratio.toFixed(1)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (html === '<p class="text-sm text-gray-600 mb-4">Selecciona de qué área transferir un enfermero:</p>') {
+                html += '<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">No hay áreas disponibles con enfermeros para transferir.</div>';
+            }
+
+            opciones.innerHTML = html;
+            modal.classList.remove('hidden');
+        }
+
+        function solicitarQuitarEnfermero(indexOrigen) {
+            const modal = document.getElementById('modal');
+            const titulo = document.getElementById('modal-titulo');
+            const opciones = document.getElementById('modal-opciones');
+
+            titulo.textContent = `Transferir enfermero desde ${areas[indexOrigen].nombre}`;
+            
+            let html = '<p class="text-sm text-gray-600 mb-4">Selecciona a qué área asignar el enfermero:</p>';
+            
+            areas.forEach((area, index) => {
+                if (index !== indexOrigen) {
+                    const ratio = parseFloat(calcularRatio(area.pacientes, area.enfermeros));
+                    const nivel = obtenerNivel(ratio, area.ratioMaximo);
+                    html += `
+                        <div onclick="transferirEnfermero(${indexOrigen}, ${index})" class="cursor-pointer p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all">
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <p class="font-semibold text-gray-900">${area.nombre}</p>
+                                    <p class="text-xs text-gray-500 mt-1">Enfermeros: ${area.enfermeros} → ${area.enfermeros + 1}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${nivel.badgeClass} text-white">
+                                        Ratio: ${ratio.toFixed(1)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            opciones.innerHTML = html;
+            modal.classList.remove('hidden');
+        }
+
+        function transferirEnfermero(indexOrigen, indexDestino) {
+            if (areas[indexOrigen].enfermeros <= 1) {
+                alert('No se puede dejar un área sin enfermeros');
+                return;
+            }
+            
+            areas[indexOrigen].enfermeros--;
+            areas[indexDestino].enfermeros++;
+            
+            // Registrar la transferencia
+            const nombreOrigen = areas[indexOrigen].nombre;
+            const nombreDestino = areas[indexDestino].nombre;
+            
+            // Agregar a las transferencias del destino (recibió)
+            const existenteRecibido = areas[indexDestino].transferencias.find(
+                t => t.tipo === 'recibido' && t.sector === nombreOrigen
+            );
+            if (existenteRecibido) {
+                existenteRecibido.cantidad++;
+            } else {
+                areas[indexDestino].transferencias.push({
+                    tipo: 'recibido',
+                    sector: nombreOrigen,
+                    cantidad: 1
+                });
+            }
+            
+            // Agregar a las transferencias del origen (prestó)
+            const existentePrestado = areas[indexOrigen].transferencias.find(
+                t => t.tipo === 'prestado' && t.sector === nombreDestino
+            );
+            if (existentePrestado) {
+                existentePrestado.cantidad++;
+            } else {
+                areas[indexOrigen].transferencias.push({
+                    tipo: 'prestado',
+                    sector: nombreDestino,
+                    cantidad: 1
+                });
+            }
+            
+            cerrarModal();
+            guardarEstado();
+            renderizar();
+        }
+
+        function devolverEnfermero(indexDestino, nombreOrigen) {
+            const indexOrigen = areas.findIndex(a => a.nombre === nombreOrigen);
+            
+            if (indexOrigen === -1) return;
+            
+            // Transferir el enfermero de vuelta
+            areas[indexDestino].enfermeros--;
+            areas[indexOrigen].enfermeros++;
+            
+            // Actualizar las transferencias del destino
+            const transferenciaRecibida = areas[indexDestino].transferencias.find(
+                t => t.tipo === 'recibido' && t.sector === nombreOrigen
+            );
+            if (transferenciaRecibida) {
+                transferenciaRecibida.cantidad--;
+                if (transferenciaRecibida.cantidad <= 0) {
+                    areas[indexDestino].transferencias = areas[indexDestino].transferencias.filter(
+                        t => !(t.tipo === 'recibido' && t.sector === nombreOrigen)
+                    );
+                }
+            }
+            
+            // Actualizar las transferencias del origen
+            const transferenciaPrestada = areas[indexOrigen].transferencias.find(
+                t => t.tipo === 'prestado' && t.sector === areas[indexDestino].nombre
+            );
+            if (transferenciaPrestada) {
+                transferenciaPrestada.cantidad--;
+                if (transferenciaPrestada.cantidad <= 0) {
+                    areas[indexOrigen].transferencias = areas[indexOrigen].transferencias.filter(
+                        t => !(t.tipo === 'prestado' && t.sector === areas[indexDestino].nombre)
+                    );
+                }
+            }
+            
+            guardarEstado();
+            renderizar();
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                cerrarModal();
+            }
+        });
+
+        // Inicializar
+        // Cargar estado guardado (si existe)
+        const estadoCargado = cargarEstado();
+        if (estadoCargado) {
+            console.log('✅ Estado cargado desde localStorage');
+        } else {
+            console.log('📋 Usando configuración por defecto');
+        }
+        
+        actualizarFechaHora();
+        setInterval(actualizarFechaHora, 60000);
+        
+        // Actualizar formato de fecha al cambiar tamaño de ventana
+        window.addEventListener('resize', actualizarFechaHora);
+        
+        renderizar();
+    </script>
+</body>
+</html>
